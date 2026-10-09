@@ -1,6 +1,6 @@
 # HTML Host（プロトタイプ）
 
-HTMLファイルをアップロードし、一覧から選んで表示する。サーバー不要（静的ファイルのみ）。
+HTMLファイルをアップロードし、一覧から選んで表示する。サーバー不要（静的ファイルのみ）。Cloudflare Workers で公開中。
 
 ## 使い方
 ```
@@ -14,17 +14,25 @@ npm run deploy   # ビルドして Cloudflare Workers へ手動デプロイ（�
 - `main` への push（または Actions の手動実行）で GitHub Actions が `dist/` をデプロイする
   （[.github/workflows/deploy.yml](.github/workflows/deploy.yml)、設定は [wrangler.jsonc](wrangler.jsonc)）
 - PR ではビルド（型チェック含む）の検証のみ
-- 公開URL: `https://html-host.<アカウントのサブドメイン>.workers.dev`
+- 公開URL: https://html-host.ryohei-sogo.workers.dev
+- 手動実行: `gh workflow run deploy.yml && gh run watch`
+- ローカルから `npm run deploy` する場合は Node 22 以上が必要（wrangler の要件。[.nvmrc](.nvmrc)）
 
-### 初回セットアップ
+### GitHub Secrets
+| 名前 | 内容 |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API トークン（テンプレート「Edit Cloudflare Workers」、Account Resources は自アカウントのみ） |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare のアカウントID（32桁） |
+
+- 値はリポジトリ単位で暗号化保存され、後から参照できない。確認は `gh secret list`（名前のみ）
+- トークンを作り直したとき（TTL 切れ・漏洩時など）は再登録: `gh secret set CLOUDFLARE_API_TOKEN`
+- トークンに IP 制限は付けない（GitHub Actions の IP は不定）
+
+### 再セットアップ手順（別アカウント・リポジトリ移行時）
 1. Cloudflare ダッシュボード → My Profile → API Tokens → テンプレート「Edit Cloudflare Workers」でトークンを作成
-2. アカウントID（ダッシュボードの Workers & Pages 画面右側）を控える
-3. リポジトリの Secrets に登録
-   ```
-   gh secret set CLOUDFLARE_API_TOKEN
-   gh secret set CLOUDFLARE_ACCOUNT_ID
-   ```
-4. `gh workflow run deploy.yml` で実行
+2. アカウントID を控える（ダッシュボード URL `dash.cloudflare.com/<ID>/...`、または Workers & Pages 画面右側）
+3. `gh secret set CLOUDFLARE_API_TOKEN` / `gh secret set CLOUDFLARE_ACCOUNT_ID` で登録
+4. `gh workflow run deploy.yml` で実行（Worker は初回デプロイ時に自動作成される）
 
 ## 構成
 ```
