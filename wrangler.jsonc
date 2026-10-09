@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "html-host",
+  "compatibility_date": "2026-10-01",
+  // Worker スクリプト無し・静的アセットのみ（配信は無料・無制限）
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
