@@ -10,3 +10,6 @@ dist/
 *.tfstate
 *.tfstate.*
 terraform.tfvars
+
+# Claude の作業出力（社内資料を含むためコミットしない）
+Claude outputs/
