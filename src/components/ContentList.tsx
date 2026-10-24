@@ -28,10 +28,14 @@ export function ContentList({ items, selectedId, onSelect, onDelete }: Props) {
             <span className="list__meta">
               {dateFmt.format(item.createdAt)} ・ {formatSize(item.size)}
             </span>
+            <span className="list__meta">{item.mine ? "自分" : item.ownerEmail}</span>
           </button>
-          <button className="list__delete" aria-label={`${item.name} を削除`} onClick={() => onDelete(item)}>
-            ×
-          </button>
+          {/* 削除ボタンは本人のものにだけ出す（最終的な権限チェックはサーバー側で行う） */}
+          {item.mine && (
+            <button className="list__delete" aria-label={`${item.name} を削除`} onClick={() => onDelete(item)}>
+              ×
+            </button>
+          )}
         </li>
       ))}
     </ul>

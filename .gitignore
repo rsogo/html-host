@@ -2,6 +2,7 @@ node_modules/
 dist/
 .wrangler/
 .dev.vars
+vite.config.ts.timestamp-*
 .DS_Store
 *.log
 

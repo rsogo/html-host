@@ -1,0 +1,2 @@
+# cp terraform.tfvars.example terraform.tfvars して値を入れる（terraform.tfvars はコミットしない）
+account_id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"

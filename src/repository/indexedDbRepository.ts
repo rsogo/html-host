@@ -68,6 +68,8 @@ export class IndexedDbRepository implements ContentRepository {
       name: input.name,
       size: new Blob([input.html]).size,
       createdAt: Date.now(),
+      ownerEmail: "local",
+      mine: true,
     };
     const db = await this.db();
     const tx = db.transaction([META_STORE, BODY_STORE], "readwrite");

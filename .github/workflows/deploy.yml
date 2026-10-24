@@ -23,6 +23,14 @@ jobs:
       - run: npm ci
       - run: npm run build
       # PR ではビルド検証のみ。main への push / 手動実行でデプロイ
+      # DB のマイグレーション（未適用分だけ実行される）→ デプロイの順
+      - name: Migrate D1
+        if: github.event_name != 'pull_request'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply html-host --remote
       - name: Deploy
         if: github.event_name != 'pull_request'
         uses: cloudflare/wrangler-action@v3

@@ -1,10 +1,30 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "html-host",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
-  // Worker スクリプト無し・静的アセットのみ（配信は無料・無制限）
+  // 画面（静的アセット）+ API（Worker）。/api/* だけ Worker のコードで処理し、それ以外は静的アセットを返す
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
-  }
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  // アプリの DB。接続キーは存在せず、Worker から binding 経由でのみ操作できる
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "html-host",
+      "database_id": "94017d7c-2494-4843-857c-f0a788b993df", // infra/storage の terraform output d1_database_id
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "BUCKET", "bucket_name": "html-host-contents" }
+  ],
+  "vars": {
+    // Cloudflare Access の検証用（README「DB版のセットアップ」参照）
+    "TEAM_DOMAIN": "https://orange-queen-a550.cloudflareaccess.com",
+    "POLICY_AUD": "2a3690581e09572c66691eee4c971ee7d53667f7ee65309213d003d7404d9669" // infra/access の terraform output access_aud
+  },
+  "observability": { "enabled": true }
 }

@@ -7,7 +7,7 @@ import { useHashRoute } from "./hooks/useHashRoute";
 import type { ContentMeta } from "./repository";
 
 export function App() {
-  const { items, loading, upload, remove } = useContents();
+  const { items, loading, me, error, upload, remove } = useContents();
   const { selectedId, select } = useHashRoute();
   const [message, setMessage] = useState<string | null>(null);
 
@@ -25,14 +25,24 @@ export function App() {
 
   const handleDelete = async (item: ContentMeta) => {
     if (!window.confirm(`「${item.name}」を削除しますか？`)) return;
-    await remove(item.id);
-    if (selectedId === item.id) select(null);
+    try {
+      await remove(item.id);
+      if (selectedId === item.id) select(null);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "削除に失敗しました");
+    }
   };
 
   return (
     <div className="app">
       <aside className="sidebar">
         <h1>HTML Host</h1>
+        {me && <p className="me">{me}</p>}
+        {error && (
+          <p className="message" role="alert">
+            {error}
+          </p>
+        )}
         <UploadArea onFiles={handleFiles} />
         {message && (
           <p className="message" role="status">
