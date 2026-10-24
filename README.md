@@ -1,6 +1,7 @@
 # HTML Host（プロトタイプ）
 
-HTMLファイルをアップロードし、一覧から選んで表示する。サーバー不要（静的ファイルのみ）。Cloudflare Workers で公開中。
+HTMLファイルをアップロードし、一覧から選んで表示する社内共有ツール。Cloudflare Workers で公開中。
+保存先は D1（一覧・操作履歴）と R2（HTML本体）。社内のログインした人全員が閲覧でき、削除はアップロードした本人だけ。
 
 ## 使い方
 ```
@@ -35,19 +36,21 @@ npm run deploy   # ビルドして Cloudflare Workers へ手動デプロイ（�
 4. `gh workflow run deploy.yml` で実行（Worker は初回デプロイ時に自動作成される）
 
 ## 構成
+「基盤から渡すもの」と「アプリ」をディレクトリで分けている。アプリ側は `platform/` を編集しない。
 ```
-src/
-  repository/            保存先の抽象化
-    types.ts             ContentRepository インターフェース
-    indexedDbRepository.ts  現行実装（IndexedDB。meta と body を別ストアに分離）
-    index.ts             ← クラウド化時はここで CloudRepository に差し替え
-  hooks/
-    useContents.ts       一覧取得・アップロード・削除
-    useHashRoute.ts      #/view/<id> による選択状態
-  components/
-    UploadArea.tsx       ファイル選択 / D&D（.html/.htm、10MBまで、複数可）
-    ContentList.tsx      一覧（名称・日時・サイズ・削除）
-    Viewer.tsx           sandbox iframe で表示
+platform/                基盤から渡すもの（詳細は platform/README.md）
+  worker/
+    index.ts             アプリが使う公開API: withPlatform / getUser / requireOwner / audit / HttpError
+    gateway.ts           入口処理（JWT検証 → 確認済みの利用者情報をヘッダーでアプリへ）
+    auth.ts              Cloudflare Access の JWT 検証
+    user.ts guard.ts audit.ts
+  migrations/            基盤側DB（操作履歴）のテーブル
+worker/                  アプリ: API（index.ts）
+migrations/              アプリ: テーブル（自由に設計）
+src/                     アプリ: 画面
+  repository/            保存先の抽象化（CloudRepository = API経由 / IndexedDbRepository = ブラウザ内のみの旧実装）
+  hooks/ components/
+infra/access/            Cloudflare Access（Terraform）
 ```
 
 ## 仕様メモ
@@ -56,6 +59,65 @@ src/
   （付けるとアップロードHTMLのJSが本体のIndexedDBや親DOMに触れられる）
 - 相対パスの外部リソース（画像・CSS）は解決されない。単一ファイルHTML前提
 - データはブラウザ（オリジン）ごと。別ブラウザ・別端末とは共有されない
+
+## DB版（D1 + R2）
+### 安全のための設計
+| よくある事故 | この構成での対策 |
+|---|---|
+| DB の接続キーが画面側のコードに入っている | DB の鍵は存在しない。D1 / R2 には Worker の binding からしか触れない |
+| 認証なしで API を叩ける | Access の前段チェックに加え、基盤の入口処理で JWT（`Cf-Access-Jwt-Assertion`）を署名・発行元・AUD・期限まで検証（[platform/worker/auth.ts](platform/worker/auth.ts)） |
+| 他人のデータを消せる | 所有者は JWT のメールアドレスでサーバー側が決める。画面から送られた所有者情報は無視。削除は所有者本人のみ（他人の削除は 403 で監査ログに記録） |
+| SQL インジェクション | SQL はすべてプレースホルダ（`bind`）で組み立てる |
+| 想定外のファイル | 拡張子 .html/.htm、10MB まで、ファイル名にパス区切り不可 |
+| 他サイトからのなりすまし送信 | 書き込みは同一オリジン・JSON のみ受け付ける |
+| 誰が何をしたかわからない | 基盤側の DB（`PLATFORM_DB`）の `audit_log` にアップロード・削除・削除拒否を記録。アプリの DB とは別なのでアプリからは消せない |
+
+静的アセットのみの Worker では Access のログイン情報（`ctx.access`）が渡らないため、JWT を自前で検証している。
+
+### API
+| メソッド | パス | 内容 |
+|---|---|---|
+| GET | `/api/me` | ログイン中のユーザー |
+| GET | `/api/contents` | 一覧（全員） |
+| GET | `/api/contents/:id` | 本文（全員） |
+| POST | `/api/contents` | アップロード（JSON: `name`, `html`） |
+| DELETE | `/api/contents/:id` | 削除（所有者のみ） |
+
+### 初回セットアップ（1回だけ。Mac で実行）
+```
+npx wrangler login
+npx wrangler d1 create html-host --location apac           # アプリのDB。出力の database_id を wrangler.jsonc（DB）に記入
+npx wrangler d1 create html-host-platform --location apac  # 基盤のDB（操作履歴）。wrangler.jsonc（PLATFORM_DB）に記入
+npx wrangler r2 bucket create html-host-contents --location apac
+(cd infra/access && terraform output -raw access_aud)  # 出力を wrangler.jsonc の POLICY_AUD に記入
+npm run db:migrate:remote
+```
+- `TEAM_DOMAIN` は Zero Trust のチーム名に合わせる（`https://<チーム名>.cloudflareaccess.com`）
+- データの保存場所はアジア太平洋（`--location apac`）を指定
+- GitHub Actions のデプロイ用トークン（`CLOUDFLARE_API_TOKEN`）に **D1: Edit** を追加する（R2 の権限がない場合は **Workers R2 Storage: Edit** も）。デプロイ時にマイグレーションも自動で適用される
+
+### ローカル開発
+```
+cp .dev.vars.example .dev.vars   # DEV_USER_EMAIL に自分のメールアドレス
+npm run db:migrate:local
+npm run dev:worker               # http://localhost:8787
+```
+`wrangler dev` は Access を通らないため、localhost のときだけ `DEV_USER_EMAIL` のユーザーとして動く（本番では無視される）。
+
+### 検証結果（ローカル、2026-10-24）
+| 確認内容 | 結果 |
+|---|---|
+| ログインなしで API | 401 |
+| 偽造した JWT（別の鍵で署名）／ 別アプリ向け（AUD違い）／ 発行元違い ／ 期限切れ ／ 署名なし（alg:none） | すべて 401 |
+| 他人のコンテンツの閲覧 | 200（仕様どおり全員閲覧可） |
+| 他人のコンテンツの削除 | 403（監査ログに delete_denied） |
+| 所有者を偽装してアップロード | 無視され、所有者は本人 |
+| 利用者情報のヘッダー（`X-Platform-User-Email`）を偽装 | 入口で消され、確認済みの本人に置き換わる |
+| 操作履歴がアプリの DB に無いこと | 基盤側 DB（`PLATFORM_DB`）にのみ記録 |
+| ID に SQL インジェクション | 404 |
+| ファイル名に SQL インジェクション | 文字列として保存され、テーブルは無事 |
+| 10MB 超 ／ .js ／ `../` を含む名前 | 413 ／ 400 ／ 400 |
+| 他サイトからの POST ／ フォーム送信 | 403 ／ 415 |
 
 ## アクセス制限（Cloudflare Access）
 アカウント内の**すべてのWorker**（既存・今後作るものとも、本番URL・プレビューURLとも）を Cloudflare Access で保護し、
