@@ -14,7 +14,7 @@
     {
       "binding": "DB",
       "database_name": "html-host",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID", // wrangler d1 create の出力で置き換える
+      "database_id": "94017d7c-2494-4843-857c-f0a788b993df", // infra/storage の terraform output d1_database_id
       "migrations_dir": "migrations"
     }
   ],
@@ -24,7 +24,7 @@
   "vars": {
     // Cloudflare Access の検証用（README「DB版のセットアップ」参照）
     "TEAM_DOMAIN": "https://orange-queen-a550.cloudflareaccess.com",
-    "POLICY_AUD": "REPLACE_WITH_ACCESS_AUD" // infra/access の terraform output access_aud
+    "POLICY_AUD": "2a3690581e09572c66691eee4c971ee7d53667f7ee65309213d003d7404d9669" // infra/access の terraform output access_aud
   },
   "observability": { "enabled": true }
 }

@@ -5,7 +5,7 @@ interface __BaseEnv_Env {
 	BUCKET: R2Bucket;
 	DB: D1Database;
 	TEAM_DOMAIN: "https://orange-queen-a550.cloudflareaccess.com";
-	POLICY_AUD: "REPLACE_WITH_ACCESS_AUD";
+	POLICY_AUD: "2a3690581e09572c66691eee4c971ee7d53667f7ee65309213d003d7404d9669";
 	DEV_USER_EMAIL: string;
 }
 declare namespace Cloudflare {
