@@ -16,13 +16,6 @@
       "database_name": "html-host",
       "database_id": "REPLACE_WITH_D1_DATABASE_ID", // wrangler d1 create の出力で置き換える
       "migrations_dir": "migrations"
-    },
-    // 基盤側の DB（操作履歴）。アプリのテーブルとは分け、アプリからは消せないようにする
-    {
-      "binding": "PLATFORM_DB",
-      "database_name": "html-host-platform",
-      "database_id": "REPLACE_WITH_PLATFORM_D1_DATABASE_ID", // wrangler d1 create の出力で置き換える
-      "migrations_dir": "platform/migrations"
     }
   ],
   "r2_buckets": [
@@ -30,7 +23,6 @@
   ],
   "vars": {
     // Cloudflare Access の検証用（README「DB版のセットアップ」参照）
-    "APP_NAME": "html-host",
     "TEAM_DOMAIN": "https://orange-queen-a550.cloudflareaccess.com",
     "POLICY_AUD": "REPLACE_WITH_ACCESS_AUD" // infra/access の terraform output access_aud
   },

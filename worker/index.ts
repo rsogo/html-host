@@ -12,9 +12,9 @@
  *   - 削除・更新は requireOwner() で本人確認する
  *   - 入力は種類・サイズ・形式を検証してから保存する
  */
-import { audit, getUser, HttpError, requireOwner, withPlatform, type AuditEnv, type AuthEnv } from "../platform/worker";
+import { getUser, HttpError, requireOwner, withPlatform, type AuthEnv } from "../platform/worker";
 
-type AppEnv = Env & AuthEnv & AuditEnv;
+type AppEnv = Env & AuthEnv;
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const NAME_PATTERN = /^[^\\/\x00-\x1f]{1,255}\.html?$/i;
@@ -105,7 +105,6 @@ async function handle(request: Request, env: AppEnv): Promise<Response> {
         await env.BUCKET.delete(bodyKey(row.id)); // メタ情報の保存に失敗したら本文も消す
         throw e;
       }
-      await audit(env, user, "upload", row); // ③ 操作履歴は基盤へ
       return json(toMeta(row, user.email), 201);
     }
     throw new HttpError(405, "許可されていない操作です");
@@ -128,15 +127,9 @@ async function handle(request: Request, env: AppEnv): Promise<Response> {
     }
 
     if (method === "DELETE") {
-      try {
-        requireOwner(row, user); // ③ 本人以外は 403
-      } catch (e) {
-        await audit(env, user, "delete_denied", row);
-        throw e;
-      }
+      requireOwner(row, user); // ③ 本人以外は 403
       await env.DB.prepare("DELETE FROM contents WHERE id = ?").bind(id).run();
       await env.BUCKET.delete(bodyKey(id));
-      await audit(env, user, "delete", row);
       return new Response(null, { status: 204 });
     }
     throw new HttpError(405, "許可されていない操作です");
