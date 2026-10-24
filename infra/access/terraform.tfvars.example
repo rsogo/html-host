@@ -1,0 +1,5 @@
+# cp terraform.tfvars.example terraform.tfvars して値を入れる（terraform.tfvars はコミットしない）
+account_id            = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+allowed_email_domains = ["ncdc.co.jp"]
+allowed_emails        = []
+public_worker_names   = [] # 例外として公開するWorker名（通常は空）

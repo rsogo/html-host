@@ -4,3 +4,9 @@ dist/
 .dev.vars
 .DS_Store
 *.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
