@@ -4,6 +4,8 @@ export interface ContentMeta {
   name: string;
   size: number; // bytes
   createdAt: number; // epoch ms
+  ownerEmail: string; // アップロードした人
+  mine: boolean; // ログイン中の本人のものか（削除できるか）
 }
 
 /** 本文を含むコンテンツ */
@@ -13,7 +15,7 @@ export interface Content extends ContentMeta {
 
 /**
  * コンテンツの保存先を抽象化するインターフェース。
- * 現在は IndexedDbRepository、将来は CloudRepository（API呼び出し）に差し替える。
+ * 現在は CloudRepository（Worker API + D1/R2）。IndexedDbRepository はブラウザ内のみで動く旧実装。
  */
 export interface ContentRepository {
   list(): Promise<ContentMeta[]>;

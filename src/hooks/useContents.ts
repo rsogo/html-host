@@ -12,14 +12,23 @@ export interface UploadResult {
 export function useContents() {
   const [items, setItems] = useState<ContentMeta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [me, setMe] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    setItems(await repository.list());
-    setLoading(false);
+    try {
+      setItems(await repository.list());
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "読み込みに失敗しました");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     void reload();
+    repository.me().then(setMe, () => setMe(null));
   }, [reload]);
 
   const upload = useCallback(
@@ -34,8 +43,12 @@ export function useContents() {
           result.rejected.push({ name: file.name, reason: "10MBを超えています" });
           continue;
         }
-        const html = await file.text();
-        result.added.push(await repository.save({ name: file.name, html }));
+        try {
+          const html = await file.text();
+          result.added.push(await repository.save({ name: file.name, html }));
+        } catch (e) {
+          result.rejected.push({ name: file.name, reason: e instanceof Error ? e.message : "保存に失敗しました" });
+        }
       }
       await reload();
       return result;
@@ -51,5 +64,5 @@ export function useContents() {
     [reload],
   );
 
-  return { items, loading, upload, remove };
+  return { items, loading, me, error, upload, remove };
 }
