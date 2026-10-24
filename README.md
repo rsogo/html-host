@@ -56,3 +56,48 @@ src/
   （付けるとアップロードHTMLのJSが本体のIndexedDBや親DOMに触れられる）
 - 相対パスの外部リソース（画像・CSS）は解決されない。単一ファイルHTML前提
 - データはブラウザ（オリジン）ごと。別ブラウザ・別端末とは共有されない
+
+## アクセス制限（Cloudflare Access）
+アカウント内の**すべてのWorker**（既存・今後作るものとも、本番URL・プレビューURLとも）を Cloudflare Access で保護し、
+許可したメールアドレスの人だけが開けるようにする。アプリごとの設定は不要。
+設定は Terraform（[infra/access](infra/access)）で管理する。画面での手順は確認・代替用として併記する。
+
+> 画面と Terraform の**どちらか一方**で設定すること。両方で作ると Access アプリケーションが二重になる。
+> 画面で先に作った場合は、画面側を削除してから `terraform apply` する。
+
+### 前提: Zero Trust の組織を作る（初回のみ・画面操作）
+1. Worker の **Access** タブ、または左メニュー **Zero Trust** から **Set up Zero Trust**
+2. プランを選ぶ（検証は **Free**。50ユーザーまで）
+3. チーム名は自動で付与される（ログイン画面のURL `https://<チーム名>.cloudflareaccess.com`）。本番前に社名などへ変更しておく
+4. 初期状態のログイン方法は「Cloudflareアカウントでのログイン」のみ。社員がメールアドレスで入れるよう、Terraform で One-time PIN（メールに届くコード）を追加する
+
+### 方法A（推奨）: Terraform で設定する
+1. API トークンを作る（My Profile → API Tokens → Create Custom Token）。権限はアカウント単位で:
+   - Access: Apps and Policies — Edit
+   - Access: Organizations, Identity Providers, and Groups — Edit（One-time PIN の追加に必要）
+   - Workers Scripts — Read（例外の Worker を指定する場合のみ必要）
+2. 実行する（Terraform 1.9 以上）
+   ```
+   brew install hashicorp/tap/terraform
+   export CLOUDFLARE_API_TOKEN=...        # デプロイ用トークンとは別に作る
+   cd infra/access
+   cp terraform.tfvars.example terraform.tfvars   # account_id と許可ドメイン/メールを記入
+   terraform init
+   terraform plan
+   terraform apply
+   ```
+3. シークレットウィンドウで公開URLを開き、ログイン画面が出ることを確認する
+4. 例外として誰でも開けるようにしたい Worker があれば、`public_worker_names` に名前を書いて再度 `apply`
+
+### 方法B: 画面で設定する
+1. **Workers & Pages** の一覧にある **Protect all Workers** カードで **Enable Access**
+2. 範囲は **All traffic**（本番・プレビュー両方）を選ぶ
+3. 認証ポリシーでメールドメイン（例: `ncdc.co.jp`）を指定して **Apply Access**
+4. Zero Trust → Settings → Authentication → Login methods で **One-time PIN** を追加する
+5. 方法Aの手順3と同じく確認する
+
+### 補足
+- state はローカル（`infra/access/terraform.tfstate`）。コミットしない（`.gitignore` 済み）
+- WebSocket を使う Worker は、この方式（Worker単位・アカウント単位の Access）だと 403 になる。その場合はホスト名単位の Access アプリを別途作る
+- 静的アセットのみの Worker では、ログインした人の情報（`ctx.access`）をアプリ側で受け取れない（保護自体はかかる）
+- 参考: https://developers.cloudflare.com/workers/configuration/cloudflare-access/
