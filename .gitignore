@@ -4,3 +4,12 @@ dist/
 .dev.vars
 .DS_Store
 *.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+
+# Claude の作業出力（社内資料を含むためコミットしない）
+Claude outputs/
