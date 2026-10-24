@@ -1,0 +1,3 @@
+# ローカル開発（npm run dev:worker）用。cp .dev.vars.example .dev.vars
+# wrangler dev は Cloudflare Access を通らないため、このユーザーとしてログイン扱いにする（localhost のときだけ有効）
+DEV_USER_EMAIL=you@example.com

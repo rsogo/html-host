@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && tsc -p worker && vite build",
     "preview": "vite preview",
+    "dev:worker": "npm run build && wrangler dev",
+    "db:migrate:local": "wrangler d1 migrations apply html-host --local && wrangler d1 migrations apply html-host-platform --local",
+    "db:migrate:remote": "wrangler d1 migrations apply html-host --remote && wrangler d1 migrations apply html-host-platform --remote",
     "deploy": "npm run build && wrangler deploy"
   },
   "devDependencies": {
